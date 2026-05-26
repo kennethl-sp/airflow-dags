@@ -1,11 +1,13 @@
 [project]
-name = "airflow-playground"
+name = "airflow-dags"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "apache-airflow-providers-cncf-kubernetes>=10.17.1",
     "graphviz>=0.21",
+    "pendulum>=3.2.0",
 ]
 
 [dependency-groups]
