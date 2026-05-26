@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oracle-to-mariadb-query
+  namespace: airflow
+data:
+  query.sql: |
+    SELECT
+        nvl(
+       pha.attribute_category,
+       'LOKAL'
+    ) import_lokal,
+        pv.vendor_name_alt supplier,
+        msi.segment1 kode_barang,
+        msi.description nama_barang,
+        mc.segment1 kategori,
+        pha.segment1 po_no,
+        pla.po_line_id,
+        pla.quantity,
+        pla.unit_meas_lookup_code uom,
+        (
+        SELECT
+            conversion_rate
+        FROM
+            gl_daily_rates_v
+        WHERE
+            status_code != 'D'
+            AND view_privilege = 'Y'
+            AND ( from_currency = 'USD' )
+            AND ( to_currency = 'IDR' )
+            AND ( conversion_date BETWEEN nvl(
+                 pha.rate_date,
+                 trunc(pha.creation_date)
+              ) AND nvl(
+                 pha.rate_date,
+                 trunc(pha.creation_date)
+              ) )
+            AND ( user_conversion_type = 'Kurs Tengah BI' )
+           ) rate_dolar,
+        CASE
+            WHEN pha.currency_code = 'IDR' THEN
+                 round(
+                    pla.unit_price /(
+                       SELECT conversion_rate
+                         FROM gl_daily_rates_v
+                        WHERE status_code != 'D'
+                          AND view_privilege = 'Y'
+                          AND(from_currency = 'USD')
+                          AND(to_currency = 'IDR')
+                          AND(conversion_date BETWEEN nvl(
+                          pha.rate_date,
+                          trunc(pha.creation_date)
+                       ) AND nvl(
+                          pha.rate_date,
+                          trunc(pha.creation_date)
+                       ))
+                          AND(user_conversion_type = 'Kurs Tengah BI')
+                    ),
+                    3
+                 )
+            WHEN pha.currency_code = 'USD' THEN
+                 pla.unit_price
+            ELSE
+                 round(
+                    (pla.unit_price * pha.rate) /(
+                       SELECT conversion_rate
+                         FROM gl_daily_rates_v
+                        WHERE status_code != 'D'
+                          AND view_privilege = 'Y'
+                          AND(from_currency = 'USD')
+                          AND(to_currency = 'IDR')
+                          AND(conversion_date BETWEEN nvl(
+                          pha.rate_date,
+                          trunc(pha.creation_date)
+                       ) AND nvl(
+                          pha.rate_date,
+                          trunc(pha.creation_date)
+                       ))
+                          AND(user_conversion_type = 'Kurs Tengah BI')
+                    ),
+                    3
+                 )
+        END unit_price_dolar,
+        pha.rate,
+        (
+        SELECT
+            conversion_rate
+        FROM
+            gl_daily_rates_v
+        WHERE
+            status_code != 'D'
+            AND view_privilege = 'Y'
+            AND ( from_currency = 'USD' )
+                AND ( to_currency = 'IDR' )
+                    AND ( conversion_date BETWEEN nvl(
+                 pha.rate_date,
+                 trunc(pha.creation_date)
+              ) AND nvl(
+                 pha.rate_date,
+                 trunc(pha.creation_date)
+              ) )
+                        AND ( user_conversion_type = 'Kurs Tengah BI' )
+           ) ratem,
+        pha.rate_type tipe_rate,
+        nvl(
+              pha.rate_date,
+              trunc(pha.creation_date)
+           ) tanggal_rate,
+        pla.unit_price,
+        pha.creation_date tanggal_pembelian,
+        pha.currency_code currency
+    FROM
+        po_lines_all pla,
+        po_headers_all pha,
+        mtl_system_items_b msi,
+        mtl_item_categories mic,
+        mtl_categories_b mc,
+        mtl_category_sets_tl mcst,
+        po_vendors pv
+    WHERE
+        1 = 1
+        AND pha.po_header_id = pla.po_header_id
+        AND nvl(
+       pha.authorization_status,
+       'INCOMPLETE'
+    ) IN ( 'APPROVED',
+           'REQUIRES REAPPROVAL',
+           'IN PROCESS' )
+        AND nvl(
+       pla.cancel_flag,
+       'N'
+    ) != 'Y'
+        AND pla.item_id = msi.inventory_item_id
+        AND msi.organization_id = 84
+        AND mic.category_id = mc.category_id
+        AND msi.inventory_item_id = mic.inventory_item_id
+        AND msi.organization_id = mic.organization_id
+        AND mic.category_set_id = mcst.category_set_id
+        AND mcst.category_set_name = 'SP Item Category'
+        AND pv.vendor_id = pha.vendor_id

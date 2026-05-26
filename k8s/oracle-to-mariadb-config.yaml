@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oracle-to-mariadb-config
+  namespace: airflow
+data:
+  Oracle__Host: "192.168.105.61"
+  Oracle__Port: "1531"
+  Oracle__Service: "dev03"
+  MariaDb__Host: "192.168.106.108"
+  MariaDb__Port: "3306"
+  MariaDb__Database: "my_db"
+  TargetTable: "po_lines"
+  BatchSize: "1000"
