@@ -36,10 +36,10 @@ with DAG(
         volume_mounts=[
             k8s.V1VolumeMount(name="query-volume", mount_path="/etc/query", read_only=True)
         ],
-        resources={
-            "requests": {"cpu": "500m", "memory": "512Mi"},
-            "limits": {"cpu": "1", "memory": "1Gi"},
-        },
+        resources=k8s.V1ResourceRequirements(
+            requests={"cpu": "500m", "memory": "512Mi"},
+            limits={"cpu": "1", "memory": "1Gi"},
+        ),
         get_logs=True,
         is_delete_operator_pod=True,
     )
