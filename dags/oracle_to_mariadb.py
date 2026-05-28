@@ -3,6 +3,12 @@ from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from kubernetes.client import models as k8s
 
+default_args = {
+    'email_on_failure': True,
+    'email': ['kenneth.lieyanto@suryapamenang.com'],
+    'email_on_retry': False,
+}
+
 with DAG(
     dag_id="oracle_to_mariadb",
     description="Daily Oracle EBS → MariaDB full refresh",
@@ -11,6 +17,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     tags=["etl", "oracle-to-mariadb"],
+    default_args=default_args,
 ) as dag:
 
     KubernetesPodOperator(
