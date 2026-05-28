@@ -2,26 +2,26 @@ import pendulum
 from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from kubernetes.client import models as k8s
-
-default_args = {
-    'email_on_failure': True,
-    'email': ['kenneth.lieyanto@suryapamenang.com'],
-    'email_on_retry': False,
-}
+from airflow.providers.smtp.notifications.smtp import send_smtp_notification
 
 with DAG(
-    dag_id="oracle_to_mariadb",
-    description="Daily Oracle EBS → MariaDB full refresh",
+    dag_id="bi_purchase_order",
+    description="Untuk BI Purchase Order. Dipakai marketing.",
     schedule=None,
     start_date=pendulum.datetime(2026, 5, 26, tz="Asia/Jakarta"),
     catchup=False,
     max_active_runs=1,
-    tags=["etl", "oracle-to-mariadb"],
-    default_args=default_args,
+    tags=["etl", "bi_purchase_order"],
+    on_failure_callback=[
+         send_smtp_notification(
+            from_email="no-reply@suryapamenang.com",
+            to="kenneth.lieyanto@suryapamenang.com",
+            subject="[Error] The dag {{ dag.dag_id }} failed",
+        )
+    ],
 ) as dag:
-
     KubernetesPodOperator(
-        task_id="run_transfer",
+        task_id="move",
         name="oracle-to-mariadb-transfer",
         namespace="airflow",
         image="ghcr.io/kennethl-sp/oracle-to-mariadb:staging",
